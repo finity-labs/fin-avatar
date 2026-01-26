@@ -1,4 +1,4 @@
-name: Quality Assurance
+name: Code Style
 
 on:
   push:
@@ -7,30 +7,25 @@ on:
     branches: [ main ]
 
 jobs:
-  quality:
-    name: Quality Checks
+  style:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, bcmath, soap, intl, gd, exif, iconv
-          coverage: none
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
 
-      # 1. Code Style (Pint)
+      # Runs Pint (Style)
       - name: Check Code Style
         run: composer test:style
 
-      # 2. Static Analysis (PHPStan)
+      # Runs PHPStan (Static Analysis) - I included this here as it's usually fast like style checks
       - name: Static Analysis
         run: composer analyse
-
-      # 3. Tests (Pest)
-      - name: Execute Tests
-        run: composer test
