@@ -1,5 +1,11 @@
 # FinAvatar for Filament
 
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/finity-labs/fin-avatar.svg?style=flat-square)](https://packagist.org/packages/finity-labs/fin-avatar)
+[![Tests](https://github.com/finity-labs/fin-avatar/actions/workflows/run-tests.yml/badge.svg)](https://github.com/finity-labs/fin-avatar/actions/workflows/run-tests.yml)
+[![Code Style](https://github.com/finity-labs/fin-avatar/actions/workflows/fix-php-code-style-issues.yml/badge.svg)](https://github.com/finity-labs/fin-avatar/actions/workflows/fix-php-code-style-issues.yml)
+[![Total Downloads](https://img.shields.io/packagist/dt/finity-labs/fin-avatar.svg?style=flat-square)](https://packagist.org/packages/finity-labs/fin-avatar)
+[![License](https://img.shields.io/packagist/l/finity-labs/fin-avatar.svg?style=flat-square)](https://packagist.org/packages/finity-labs/fin-avatar)
+
 A privacy-focused, high-performance avatar provider for Filament V4.
 It generates SVGs locally using a dedicated route, ensuring **zero external requests** (GDPR compliant) and utilizing **browser caching** for instant loads.
 
