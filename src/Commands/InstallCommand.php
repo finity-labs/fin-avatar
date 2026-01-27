@@ -7,7 +7,6 @@ namespace FinityLabs\FinAvatar\Commands;
 use Filament\Facades\Filament;
 use FinityLabs\FinAvatar\AvatarProviders\UiAvatarsProvider;
 use Illuminate\Console\Command;
-use ReflectionClass;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 use function Laravel\Prompts\multiselect;
@@ -47,11 +46,18 @@ class InstallCommand extends Command
     {
         $panel = Filament::getPanel($panelId);
 
-        $reflection = new ReflectionClass($panel->getProvider());
-        $panelPath = $reflection->getFileName();
+        $panelPath = app_path(
+            (string) str($panel->getId())
+                ->studly()
+                ->append('PanelProvider')
+                ->prepend('Providers/Filament/')
+                ->replace('/', DIRECTORY_SEPARATOR)
+                ->append('.php')
+        );
 
         if (! file_exists($panelPath)) {
             $this->error("Could not locate Panel Provider for [{$panelId}] at: {$panelPath}");
+
             return;
         }
 

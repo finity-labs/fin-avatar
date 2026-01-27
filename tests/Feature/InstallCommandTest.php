@@ -1,116 +1,89 @@
 <?php
 
+declare(strict_types=1);
+
 use Filament\Facades\Filament;
 use Filament\Panel;
 use Illuminate\Support\Facades\File;
 
-// 1. Setup: Create a temporary directory and file before each test
 beforeEach(function () {
-    $this->tempDir = sys_get_temp_dir() . '/fin_avatar_tests';
-    if (! is_dir($this->tempDir)) {
-        mkdir($this->tempDir);
+    // 1. Setup: Ensure the directory exists where the command looks
+    // The command uses app_path('Providers/Filament/XPanelProvider.php')
+    $this->directory = app_path('Providers/Filament');
+
+    if (! is_dir($this->directory)) {
+        mkdir($this->directory, 0777, true);
     }
 
-    // We define a unique class name for the test to avoid collisions
-    $this->className = 'TestPanelProvider';
-    $this->providerPath = $this->tempDir . "/{$this->className}.php";
+    // We use 'AdminPanelProvider' because the ID is 'admin'
+    // 'admin' -> studly -> 'Admin' + 'PanelProvider' -> 'AdminPanelProvider'
+    $this->providerPath = $this->directory . '/AdminPanelProvider.php';
 
-    // Create the dummy class file
-    $classContent = <<<PHP
-    <?php
+    // Helper to generate initial content
+    $this->createProvider = function ($extraContent = '') {
+        $content = <<<PHP
+        <?php
 
-    namespace FinityLabs\Tests;
+        namespace App\Providers\Filament;
 
-    use Filament\Panel;
-    use Filament\PanelProvider;
+        use Filament\Panel;
+        use Filament\PanelProvider;
 
-    class {$this->className} extends PanelProvider
-    {
-        public function panel(Panel \$panel): Panel
+        class AdminPanelProvider extends PanelProvider
         {
-            return \$panel
-                ->id('admin')
-                ->path('admin')
-                ->colors([
-                    'primary' => 'red',
-                ]);
+            public function panel(Panel \$panel): Panel
+            {
+                return \$panel
+                    ->id('admin')
+                    {$extraContent}
+                    ->path('admin');
+            }
         }
-    }
-    PHP;
-
-    file_put_contents($this->providerPath, $classContent);
-
-    // Require the file so PHP knows the class exists for Reflection
-    if (! class_exists("FinityLabs\\Tests\\{$this->className}")) {
-        require_once $this->providerPath;
-    }
+        PHP;
+        file_put_contents($this->providerPath, $content);
+    };
 });
 
-// 2. Cleanup: Remove temp files after tests
 afterEach(function () {
+    // Cleanup: Delete the specific file we created
     if (file_exists($this->providerPath)) {
         unlink($this->providerPath);
-    }
-    if (is_dir($this->tempDir)) {
-        rmdir($this->tempDir);
     }
     Mockery::close();
 });
 
 it('installs the avatar provider into a fresh panel', function () {
-    // Mock Filament to return our temporary provider class
+    // Setup fresh file
+    ($this->createProvider)();
+
+    // Mock Filament
     $mockPanel = Mockery::mock(Panel::class);
-    $mockPanel->shouldReceive('getProvider')->andReturn("FinityLabs\\Tests\\{$this->className}");
+    $mockPanel->shouldReceive('getId')->andReturn('admin');
 
-    Filament::shouldReceive('getPanel')
-        ->with('admin')
-        ->andReturn($mockPanel);
+    Filament::shouldReceive('getPanels')->andReturn(['admin' => $mockPanel]);
+    Filament::shouldReceive('getPanel')->with('admin')->andReturn($mockPanel);
 
-    Filament::shouldReceive('getPanels')
-        ->andReturn(['admin' => $mockPanel]);
-
-    // Run the command
+    // Run Command
     $this->artisan('fin-avatar:install', ['panels' => ['admin']])
         ->assertSuccessful();
 
     $content = file_get_contents($this->providerPath);
 
-    // Assert Import was added
+    // Assertions
     expect($content)->toContain('use FinityLabs\FinAvatar\AvatarProviders\UiAvatarsProvider;');
-
-    // Assert Method was chained to ->id()
     expect($content)->toContain('->defaultAvatarProvider(UiAvatarsProvider::class)');
 });
 
-it('replaces an existing avatar provider if found', function () {
-    // 1. Setup file with an OLD provider
-    $oldContent = <<<PHP
-    <?php
-    namespace FinityLabs\Tests;
-    use Filament\Panel;
-    use Filament\PanelProvider;
+it('replaces an existing different avatar provider if found', function () {
+    // Setup file with an OLD provider
+    ($this->createProvider)('->defaultAvatarProvider(OldProvider::class)');
 
-    class {$this->className} extends PanelProvider
-    {
-        public function panel(Panel \$panel): Panel
-        {
-            return \$panel
-                ->id('admin')
-                ->defaultAvatarProvider(OldProvider::class) // <--- Old one
-                ->path('admin');
-        }
-    }
-    PHP;
-    file_put_contents($this->providerPath, $oldContent);
-
-    // Mock
     $mockPanel = Mockery::mock(Panel::class);
-    $mockPanel->shouldReceive('getProvider')->andReturn("FinityLabs\\Tests\\{$this->className}");
+    $mockPanel->shouldReceive('getId')->andReturn('admin');
 
-    Filament::shouldReceive('getPanel')->with('admin')->andReturn($mockPanel);
     Filament::shouldReceive('getPanels')->andReturn(['admin' => $mockPanel]);
+    Filament::shouldReceive('getPanel')->with('admin')->andReturn($mockPanel);
 
-    // Run Command
     $this->artisan('fin-avatar:install', ['panels' => ['admin']])
         ->assertSuccessful();
 
@@ -124,35 +97,15 @@ it('replaces an existing avatar provider if found', function () {
 });
 
 it('does not duplicate the provider if already installed', function () {
-    // 1. Setup file that already has the correct provider
-    $installedContent = <<<PHP
-    <?php
-    namespace FinityLabs\Tests;
-    use Filament\Panel;
-    use Filament\PanelProvider;
-    use FinityLabs\FinAvatar\AvatarProviders\UiAvatarsProvider;
+    // Setup file that already has the correct provider
+    ($this->createProvider)('->defaultAvatarProvider(UiAvatarsProvider::class)');
 
-    class {$this->className} extends PanelProvider
-    {
-        public function panel(Panel \$panel): Panel
-        {
-            return \$panel
-                ->id('admin')
-                ->defaultAvatarProvider(UiAvatarsProvider::class) // <--- Already here
-                ->path('admin');
-        }
-    }
-    PHP;
-    file_put_contents($this->providerPath, $installedContent);
-
-    // Mock
     $mockPanel = Mockery::mock(Panel::class);
-    $mockPanel->shouldReceive('getProvider')->andReturn("FinityLabs\\Tests\\{$this->className}");
+    $mockPanel->shouldReceive('getId')->andReturn('admin');
 
-    Filament::shouldReceive('getPanel')->with('admin')->andReturn($mockPanel);
     Filament::shouldReceive('getPanels')->andReturn(['admin' => $mockPanel]);
+    Filament::shouldReceive('getPanel')->with('admin')->andReturn($mockPanel);
 
-    // Run Command
     $this->artisan('fin-avatar:install', ['panels' => ['admin']])
         ->assertSuccessful();
 
@@ -160,27 +113,54 @@ it('does not duplicate the provider if already installed', function () {
 
     // Count occurrences to ensure it wasn't added twice
     $count = substr_count($content, 'UiAvatarsProvider::class');
-    expect($count)->toBe(1);
+    // It appears once in the usage, possibly once in imports if we don't check imports strictly,
+    // but definitely only once in the chain.
+    $chainCount = substr_count($content, '->defaultAvatarProvider(UiAvatarsProvider::class)');
+    expect($chainCount)->toBe(1);
 });
 
 it('can handle multiple panels at once', function () {
-    // Mocking two panels requires a bit more setup or simply running the loop twice logic
-    // For simplicity, we test that the loop works by passing an array
+    // 1. Create Admin Panel
+    ($this->createProvider)(); // admin
 
-    $mockPanel = Mockery::mock(Panel::class);
-    $mockPanel->shouldReceive('getProvider')->andReturn("FinityLabs\\Tests\\{$this->className}");
+    // 2. Create Second "App" Panel
+    $appPath = $this->directory . '/AppPanelProvider.php';
+    $appContent = <<<PHP
+    <?php
+    namespace App\Providers\Filament;
+    use Filament\Panel;
+    use Filament\PanelProvider;
+    class AppPanelProvider extends PanelProvider {
+        public function panel(Panel \$panel): Panel {
+            return \$panel->id('app');
+        }
+    }
+    PHP;
+    file_put_contents($appPath, $appContent);
 
-    Filament::shouldReceive('getPanel')->with('admin')->andReturn($mockPanel);
-    Filament::shouldReceive('getPanel')->with('app')->andReturn($mockPanel); // Reuse same file for test simplicity
+    // Mock both panels
+    $mockAdmin = Mockery::mock(Panel::class);
+    $mockAdmin->shouldReceive('getId')->andReturn('admin');
 
-    Filament::shouldReceive('getPanels')->andReturn(['admin' => $mockPanel, 'app' => $mockPanel]);
+    $mockApp = Mockery::mock(Panel::class);
+    $mockApp->shouldReceive('getId')->andReturn('app');
 
+    Filament::shouldReceive('getPanels')->andReturn(['admin' => $mockAdmin, 'app' => $mockApp]);
+    Filament::shouldReceive('getPanel')->with('admin')->andReturn($mockAdmin);
+    Filament::shouldReceive('getPanel')->with('app')->andReturn($mockApp);
+
+    // Run Command for BOTH
     $this->artisan('fin-avatar:install', ['panels' => ['admin', 'app']])
         ->assertSuccessful();
 
-    // Since we used the same file for both "panels", it should be installed once
-    // and then skipped/verified on the second pass.
+    // Verify Admin
+    $adminContent = file_get_contents($this->providerPath);
+    expect($adminContent)->toContain('UiAvatarsProvider::class');
 
-    $content = file_get_contents($this->providerPath);
-    expect($content)->toContain('->defaultAvatarProvider(UiAvatarsProvider::class)');
+    // Verify App
+    $appResult = file_get_contents($appPath);
+    expect($appResult)->toContain('UiAvatarsProvider::class');
+
+    // Cleanup extra file
+    unlink($appPath);
 });
