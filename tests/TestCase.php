@@ -2,6 +2,9 @@
 
 namespace FinityLabs\FinAvatar\Tests;
 
+use BladeUI\Heroicons\BladeHeroiconsServiceProvider;
+use BladeUI\Icons\BladeIconsServiceProvider;
+use Filament\FilamentServiceProvider;
 use FinityLabs\FinAvatar\FinAvatarServiceProvider;
 use Filament\Support\SupportServiceProvider;
 use Livewire\LivewireServiceProvider;
@@ -17,9 +20,17 @@ class TestCase extends Orchestra
     protected function getPackageProviders($app)
     {
         return [
-            LivewireServiceProvider::class, // Livewire Support
-            SupportServiceProvider::class, // Filament Support
-            FinAvatarServiceProvider::class, // Your Package
+            // 1. Blade Icons & Livewire (Required by Filament)
+            BladeHeroiconsServiceProvider::class,
+            BladeIconsServiceProvider::class,
+            LivewireServiceProvider::class,
+
+            // 2. Filament Providers
+            FilamentServiceProvider::class,
+            SupportServiceProvider::class,
+
+            // 3. Your Package Provider
+            FinAvatarServiceProvider::class,
         ];
     }
 

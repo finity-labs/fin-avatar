@@ -25,7 +25,7 @@ You can install the package via composer:
 ```bash
 composer require finity-labs/fin-avatar
 ```
-Running the install command will configure the selected panel automatically:
+Running the install command will configure the selected panels automatically:
 ```bash
 php artisan finity-labs:install
 ```
@@ -35,13 +35,13 @@ php artisan finity-labs:install
 Add in AdminPanelProvider.php:
 
 ```php
-use FinityLabs\FinAvatar\Providers\UiTextAvatarsProvider;
+use FinityLabs\FinAvatar\Providers\UiAvatarsProvider;
 
 public function panel(Panel $panel): Panel
 {
     return $panel
         // ...
-        ->defaultAvatarProvider(UiTextAvatarsProvider::class);
+        ->defaultAvatarProvider(UiAvatarsProvider::class);
 }
 ```
 
