@@ -38,7 +38,7 @@ php artisan finity-labs:install
 Add in AdminPanelProvider.php:
 
 ```php
-use FinityLabs\FinAvatar\Providers\UiAvatarsProvider;
+use FinityLabs\FinAvatar\AvatarProviders\UiAvatarsProvider;
 
 public function panel(Panel $panel): Panel
 {
